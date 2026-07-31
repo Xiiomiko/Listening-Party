@@ -152,6 +152,14 @@ async def _get_tracks_from_ranges(canal_id: int, rango_str: str) -> tuple[list, 
     return tracks, ""
 
 
+try:
+    import imageio_ffmpeg
+    _FFMPEG_BIN = imageio_ffmpeg.get_ffmpeg_exe()
+except Exception:
+    # Si no está instalado imageio-ffmpeg, se intenta usar un ffmpeg del sistema.
+    _FFMPEG_BIN = "ffmpeg"
+
+
 async def _apply_volume(src_path: str, volume_pct: int) -> Optional[str]:
     if volume_pct == 100:
         return None
@@ -159,7 +167,7 @@ async def _apply_volume(src_path: str, volume_pct: int) -> Optional[str]:
     factor = max(0.1, min(3.0, volume_pct / 100))
     try:
         proc = await asyncio.create_subprocess_exec(
-            "ffmpeg", "-y", "-i", src_path, "-filter:a", f"volume={factor}", "-vn", dst_path,
+            _FFMPEG_BIN, "-y", "-i", src_path, "-filter:a", f"volume={factor}", "-vn", dst_path,
             stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL,
         )
         await asyncio.wait_for(proc.wait(), timeout=60)
