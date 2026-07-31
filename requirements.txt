@@ -1,0 +1,5 @@
+python-telegram-bot==21.1.1
+pyrofork==2.2.11
+tgcrypto>=1.2,<2.0
+py-tgcalls>=2.0,<3.0
+imageio-ffmpeg>=0.4.9
