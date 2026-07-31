@@ -125,6 +125,7 @@ async def _get_tracks_from_ranges(canal_id: int, rango_str: str) -> tuple[list, 
         return [], f"Sintaxis de rango inválida: {e}"
 
     tracks = []
+    last_error = ""
     chunk_size = 50  # Peticiones en lotes para no saturar Telegram
     for i in range(0, len(ids), chunk_size):
         chunk_ids = ids[i:i + chunk_size]
@@ -147,7 +148,14 @@ async def _get_tracks_from_ranges(canal_id: int, rango_str: str) -> tuple[list, 
                             "title": full_title
                         })
         except Exception as e:
+            last_error = str(e)
             logging.error(f"[RADIO] Error leyendo mensajes {chunk_ids}: {e}")
+
+    if not tracks and last_error:
+        # No se encontró NADA y además hubo una excepción real (ej: el
+        # userbot no está unido al canal, ID de canal inválido, etc.).
+        # Se la mostramos al usuario en vez de esconderla en los logs.
+        return [], f"El userbot no pudo leer el canal. Detalle: <code>{html.escape(last_error)}</code>\n\n<i>Tip: revisa que la cuenta del USERBOT_SESSION esté unida/suscrita a ese canal, no solo el bot.</i>"
 
     return tracks, ""
 
@@ -564,7 +572,7 @@ async def cmd_radio(update: Update, context: ContextTypes.DEFAULT_TYPE):
     tracks, err = await _get_tracks_from_ranges(canal_id, rango_str)
 
     if err or not tracks:
-        return await msg.edit_text(f"❌ No se encontraron audios válidos en ese rango.\n{err}")
+        return await msg.edit_text(f"❌ No se encontraron audios válidos en ese rango.\n{err}", parse_mode="HTML")
 
     party = _get_party(chat_destino)
     _safe_remove(party.get("current_tmp_path"))
@@ -599,7 +607,7 @@ async def cmd_radio_espera(update: Update, context: ContextTypes.DEFAULT_TYPE):
     tracks, err = await _get_tracks_from_ranges(canal_id, rango_str)
 
     if err or not tracks:
-        return await msg.edit_text(f"❌ Ese mensaje no contiene un audio válido.")
+        return await msg.edit_text(f"❌ Ese mensaje no contiene un audio válido.\n{err}", parse_mode="HTML")
 
     party = _get_party(chat_destino)
     _safe_remove(party.get("current_tmp_path"))
@@ -632,7 +640,7 @@ async def cmd_radio_add(update: Update, context: ContextTypes.DEFAULT_TYPE):
     tracks, err = await _get_tracks_from_ranges(canal_id, rango_str)
 
     if err or not tracks:
-        return await msg.edit_text(f"❌ No se encontraron audios válidos.\n{err}")
+        return await msg.edit_text(f"❌ No se encontraron audios válidos.\n{err}", parse_mode="HTML")
 
     # Guardamos en la cola "pendiente"
     party = _get_party(chat_destino)
