@@ -1,0 +1,18 @@
+# ─────────────────────────────────────────────────────────────────────────
+# IMPORTANTE:
+# Copia aquí EXACTAMENTE las mismas versiones de "pyrogram" (o el fork que
+# uses, ej. kurigram/pyrofork) y "pytgcalls" (py-tgcalls / ntgcalls) que ya
+# tenías funcionando en el bot viejo en Render. Esas versiones ya son
+# compatibles con Python 3.14 en ese entorno, así que no hace falta
+# adivinar nuevos pines aquí; el error de "GroupcallInvalid" ya se
+# soluciona a nivel de código (ver listening_party.py), no cambiando
+# versiones.
+#
+# Ejemplo (reemplaza por las tuyas reales, copiadas del requirements.txt
+# del bot viejo):
+#   pyrogram==2.x.x            (o kurigram==x.x.x / pyrofork==x.x.x)
+#   TgCrypto==1.x.x
+#   py-tgcalls==2.x.x
+# ─────────────────────────────────────────────────────────────────────────
+
+python-telegram-bot==21.7
