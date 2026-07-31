@@ -420,6 +420,22 @@ async def start_userbot() -> None:
         _userbot = None
         return
 
+    # Pyrogram necesita "conocer" (resolver) un chat antes de poder leerlo
+    # por ID directo, aunque la cuenta ya sea miembro de él. Sin esto, canales
+    # a los que el userbot fue agregado hace poco (o a los que no le ha
+    # llegado ningún update todavía) fallan con:
+    #   PEER_ID_INVALID: Make sure you meet the peer before interacting with it
+    # Recorrer get_dialogs() fuerza a Pyrogram a resolver y cachear TODOS los
+    # chats/canales/grupos de los que la cuenta es miembro.
+    try:
+        logging.info("[PARTY] Sincronizando diálogos del userbot...")
+        dialog_count = 0
+        async for _dialog in _userbot.get_dialogs():
+            dialog_count += 1
+        logging.info(f"[PARTY] ✅ {dialog_count} chats sincronizados.")
+    except Exception as e:
+        logging.warning(f"[PARTY] No se pudieron sincronizar los diálogos del userbot: {e}")
+
     try:
         _pytgcalls = PyTgCalls(_userbot)
         _register_stream_end()
@@ -546,7 +562,11 @@ async def cmd_help_fiesta(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "<i>El bot escaneará el canal pero NO las reproducirá. Te enviará un botón de confirmación. Al tocar ese botón, el bot apaga automáticamente la música de espera y arranca con tu nueva lista.</i>\n\n"
 
         "<b>🎛 PANEL VISUAL:</b>\n"
-        "👉 <code>/fiesta</code> - Abre el panel con botones para pausar, mezclar, ver la cola y controlar bucles."
+        "👉 <code>/fiesta</code> - Abre el panel con botones para pausar, mezclar, ver la cola y controlar bucles.\n\n"
+
+        "<b>⚠️ SI ACABAS DE AGREGAR EL USERBOT A UN CANAL NUEVO:</b>\n"
+        "Ejecuta primero <code>/sync_canales</code> una vez, o el bot no podrá leerlo "
+        "(error <code>PEER_ID_INVALID</code>)."
     )
     await update.message.reply_text(texto_ayuda, parse_mode="HTML")
 
@@ -656,6 +676,31 @@ async def cmd_radio_add(update: Update, context: ContextTypes.DEFAULT_TYPE):
         parse_mode="HTML",
         reply_markup=kb
     )
+
+
+async def cmd_sync_canales(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Re-sincroniza los diálogos del userbot. Úsalo después de agregar el
+    userbot a un canal/grupo nuevo, para que el bot pueda leerlo sin tener
+    que reiniciar el servicio en Render."""
+    if not _is_admin(update.effective_user.id):
+        return
+
+    if not _userbot:
+        await update.message.reply_text("⚠️ El userbot no está conectado todavía.")
+        return
+
+    msg = await update.message.reply_text("🔄 Sincronizando canales y grupos del userbot...")
+    try:
+        dialog_count = 0
+        async for _dialog in _userbot.get_dialogs():
+            dialog_count += 1
+        await msg.edit_text(
+            f"✅ <b>Listo.</b> El userbot ahora reconoce {dialog_count} chats.\n"
+            f"Ya puedes usar <code>/radio</code> con canales a los que lo hayas agregado recientemente.",
+            parse_mode="HTML"
+        )
+    except Exception as e:
+        await msg.edit_text(f"❌ Error al sincronizar: <code>{html.escape(str(e))}</code>", parse_mode="HTML")
 
 
 async def cmd_fiesta(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -880,6 +925,7 @@ def setup_listening_party_handlers(
 
     application.add_handler(CommandHandler("ayuda_fiesta", cmd_help_fiesta))
     application.add_handler(CommandHandler("fiesta", cmd_fiesta))
+    application.add_handler(CommandHandler("sync_canales", cmd_sync_canales))
     application.add_handler(CommandHandler("radio", cmd_radio))
     application.add_handler(CommandHandler("radio_espera", cmd_radio_espera))
     application.add_handler(CommandHandler("radio_add", cmd_radio_add))
