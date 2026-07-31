@@ -13,6 +13,7 @@ Flujo típico:
   3. Dentro de ese grupo: /radio -100XXXXXXXXXX 1-20
 """
 
+import asyncio
 import logging
 import os
 import threading
@@ -109,6 +110,19 @@ def main() -> None:
     # el puerto $PORT. Si es "Background Worker" este hilo no hace daño,
     # simplemente no lo usa nadie.
     threading.Thread(target=_keep_alive_server, daemon=True).start()
+
+    # Python 3.14 eliminó la creación automática de un event loop cuando no
+    # hay uno corriendo en el hilo principal: asyncio.get_event_loop() ahora
+    # lanza RuntimeError en vez de crear uno nuevo (antes solo avisaba con un
+    # DeprecationWarning). python-telegram-bot 21.x todavía depende de ese
+    # comportamiento implícito dentro de Application.run_polling(), así que
+    # creamos y fijamos el loop nosotros mismos antes de construir/arrancar
+    # la Application.
+    try:
+        asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
 
     application = (
         Application.builder()
